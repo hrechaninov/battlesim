@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Battle Sim</title>
+	<link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<body>
+	<div class="full-screen" id="main-screen"></div>
+	<div class="full-screen" id="fleet-battle-screen">
+		<div class="full-size" id="star-sky"></div>
+		<div class="full-size" id="ring-world"></div>
+		<canvas class="full-size" id="fleet-canvas"></canvas>
+
+		<div class= "header"></div>
+		<div class="menu-icon">
+			<svg id="menu_icon" data-name="Faction icon" viewBox="0 0 60 70"><defs><style>.cls-2{fill:#5d776b;}.cls-3{fill:#ad9b77;}</style><linearGradient id="idle-gradient" x1="30" y1="2.21" x2="30" y2="67.79" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#834f5a"/><stop offset="0.2" stop-color="#6f3a45"/><stop offset="0.48" stop-color="#5b2530"/><stop offset="0.75" stop-color="#4e1722"/><stop offset="1" stop-color="#4a131e"/></linearGradient><linearGradient id="hover-gradient" x1="30" y1="2.21" x2="30" y2="67.79" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#a86e73"/><stop offset="0.14" stop-color="#9b626b"/><stop offset="0.45" stop-color="#844c5c"/><stop offset="0.74" stop-color="#773f53"/><stop offset="1" stop-color="#723b50"/></linearGradient><linearGradient id="active-gradient" x1="30" y1="2.21" x2="30" y2="67.79" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8d5964"/><stop offset="0.24" stop-color="#743f4a"/><stop offset="0.5" stop-color="#602a35"/><stop offset="0.76" stop-color="#531c27"/><stop offset="1" stop-color="#4f1823"/></linearGradient></defs><title>icon</title><g id="icon"><polygon class="background" points="30.38 2.21 58.1 18.75 58.1 51.06 30.38 67.79 1.9 51.06 1.9 19.13 30.38 2.21"/><path class="cls-2" d="M30.38,2.21,58.1,18.75V51.06L30.38,67.79,1.9,51.06V19.13L30.38,2.21m0-2.21-1,.58L.93,17.49,0,18.05v34.1l.94.55L29.42,69.43l1,.57,1-.58L59.08,52.69l.92-.55V17.67l-.93-.55L31.35.58l-1-.58Z"/><polygon class="cls-3" points="29.65 37.13 20.81 27.92 9.16 27.92 9.16 26.02 21.62 26.02 31.02 35.81 29.65 37.13"/><rect class="cls-3" x="13.05" y="28.87" width="7.59" height="1.9"/><rect class="cls-3" x="17.71" y="31.91" width="5.89" height="1.9"/><rect class="cls-3" x="21.41" y="34.76" width="5.03" height="1.9"/><polygon class="cls-3" points="30.83 37.12 29.45 35.82 38.66 26.02 51.12 26.02 51.12 27.92 39.48 27.92 30.83 37.12"/><rect class="cls-3" x="39.64" y="28.87" width="7.59" height="1.9"/><rect class="cls-3" x="36.69" y="31.91" width="5.89" height="1.9"/><rect class="cls-3" x="33.84" y="34.76" width="5.03" height="1.9"/><polygon class="cls-3" points="25.96 37.52 28.72 40.66 25.96 43.98 30.43 48.45 34.7 43.89 31.95 40.66 34.7 37.52 25.96 37.52"/><polygon class="cls-3" points="30.33 33.34 27.2 30.49 28.72 29.16 28.72 27.35 26.91 26.4 32.23 26.4 33.84 27.44 32.23 28.49 32.23 29.34 32.99 30.58 30.33 33.34"/></g></svg>
+		</div>
+		<div class="play-pause-indicator"></div>
+
+		<!-- fleet combat tab -->
+		<div id="fleet-combat-tab" class="hidden">
+			<div id="fleet-combat-tab-header">
+				<div id="fleet-combat-tab-header-label">
+					<p>Fleet combat</p>
+				</div>
+				<div id="fleet-combat-tab-header-rest">
+					<div class="icon-minimize" id="fleet-combat-tab-icon">
+						<div class="icon-minimize-bar"></div>
+						<div class="icon-minimize-bar"></div>
+					</div>
+				</div>
+			</div>
+			<div id="fleet-combat-tab-indicator"></div>
+			<div id="fleet-combat-tab-fleets"></div>
+		</div>
+
+		<!-- fleet config tab -->
+		<div id="fleet-config-tab" class="hidden">
+			<div id="fleet-config-tab-header">
+				<div id="fleet-config-tab-close-button">
+					<div></div>
+					<div></div>
+				</div>
+			</div>
+			<div id="fleet-config-tab-left-container">
+				<div class="container-label">Fleets</div>
+				<div id="fleet-config-tab-fleets-container">
+					<div id="fleet-config-new-fleet-button">Create fleet</div>
+				</div>
+			</div>
+			<div id="fleet-config-tab-right-container">
+				<div class="container-label">Specifications</div>
+				<div id="specs-wrapper">
+					<div id="fleet-config-tab-fleet-specs">
+						<input type="text" id="fleet-specs-name" value="Fleet name">
+						<select id="fleet-specs-faction">
+							<option value="placeholder" default selected>Select Faction</option>
+							<option value="fleet-specs-faction-republican">Republican</option>
+							<option value="fleet-specs-faction-imperial">Imperial</option>
+							<option value="fleet-specs-faction-pirate">Pirates</option>
+							<option value="fleet-specs-faction-forstate">For State</option>
+							<option value="fleet-specs-faction-uh">United Humanity</option>
+						</select>
+						<select id="fleet-specs-team">
+							<option value="placeholder" default selected>Select Side</option>
+							<option value="fleet-specs-team-usurpers">Usurpers</option>
+							<option value="fleet-specs-team-triumvirate">Triumvirate</option>
+						</select>
+					</div>
+					<div id="fleet-config-tab-ships-specs">
+						<div class="ships-specs-ship-tab" id="ships-specs-ship-tab-corvettes">
+							<div class="ships-specs-ship-tab-name">Corvettes</div>
+							<div class="ships-specs-ship-tab-amount">
+								<div class="ships-specs-minus-button ships-specs-button">-</div>
+								<input type="text" class="ships-specs-ship-amount-val" value="20">
+								<div class="ships-specs-plus-button ships-specs-button">+</div>
+							</div>
+						</div>
+						<div class="ships-specs-ship-tab" id="ships-specs-ship-tab-destroyers">
+							<div class="ships-specs-ship-tab-name">Destroyers</div>
+							<div class="ships-specs-ship-tab-amount">
+								<div class="ships-specs-minus-button ships-specs-button">-</div>
+								<input type="text" class="ships-specs-ship-amount-val" value="10">
+								<div class="ships-specs-plus-button ships-specs-button">+</div>
+							</div>
+						</div>
+						<div class="ships-specs-ship-tab" id="ships-specs-ship-tab-cruisers">
+							<div class="ships-specs-ship-tab-name">Cruisers</div>
+							<div class="ships-specs-ship-tab-amount">
+								<div class="ships-specs-minus-button ships-specs-button">-</div>
+								<input type="text" class="ships-specs-ship-amount-val" value="5">
+								<div class="ships-specs-plus-button ships-specs-button">+</div>
+							</div>
+						</div>
+						<div class="ships-specs-ship-tab" id="ships-specs-ship-tab-battleships">
+							<div class="ships-specs-ship-tab-name">Battleships</div>
+							<div class="ships-specs-ship-tab-amount">
+								<div class="ships-specs-minus-button ships-specs-button">-</div>
+								<input type="text" class="ships-specs-ship-amount-val" value="0">
+								<div class="ships-specs-plus-button ships-specs-button">+</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div id="fleet-config-tab-button-wrapper">
+					<div id="fleet-config-tab-button-delete"></div>
+					<div id="fleet-config-tab-button-save"></div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+	<div class="full-screen" id="army-battle-screen">
+		<div class="full-size" id="skyfall"></div>
+	</div>
+
+	<script type="text/javascript" src="main.js"></script>
+</body>
+</html>
