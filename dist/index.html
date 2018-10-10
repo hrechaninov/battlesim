@@ -3,13 +3,15 @@
 <head>
 	<title>Battle Sim</title>
 	<link rel="stylesheet" type="text/css" href="main.css">
-	<link rel="shortcut icon" href="./images/favicon@sm.png" sizes="16x16" type="image/png">
-	<link rel="shortcut icon" href="./images/favicon@md.png" sizes="32x32" type="image/png">
 	<link rel="shortcut icon" href="./images/favicon@lg.png" sizes="64x64" type="image/png">
+	<link rel="shortcut icon" href="./images/favicon@md.png" sizes="32x32" type="image/png">
+	<link rel="shortcut icon" href="./images/favicon@sm.png" sizes="16x16" type="image/png">
 </head>
 <body>
-	<div class="full-screen" id="main-screen"></div>
-	<div class="full-screen" id="fleet-battle-screen">
+	<div class="full-screen" id="main-screen">
+		
+	</div>
+	<div class="full-screen hidden" id="fleet-battle-screen">
 		<div class="full-size" id="star-sky"></div>
 		<div class="full-size" id="ring-world"></div>
 		<canvas class="full-size" id="fleet-canvas"></canvas>
@@ -113,7 +115,7 @@
 		</div>
 
 	</div>
-	<div class="full-screen" id="army-battle-screen">
+	<div class="full-screen hidden" id="army-battle-screen">
 		<div class="full-size" id="skyfall"></div>
 	</div>
 

@@ -23,21 +23,6 @@ body{
 	width: 100%;
 	height: 100%;
 }
-#main-screen{
-	position: absolute;
-	top: 0;
-	left: 0;
-}
-#fleet-battle-screen{
-	position: absolute;
-	top: 100vh;
-	left: 0;
-}
-#army-battle-screen{
-	position: absolute;
-	top: 200vh;
-	left: 0;
-}
 #star-sky{
 	background-image: url("./images/starsky-background.jpg");
 	background-repeat: no-repeat;
@@ -343,7 +328,7 @@ option[default]{
 	background: red;
 }
 #main-screen{
-	background: green;
+	background: white;
 }
 
 .fleet-container{
