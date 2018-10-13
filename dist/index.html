@@ -8,12 +8,90 @@
 	<link rel="shortcut icon" href="./images/favicon@sm.png" sizes="16x16" type="image/png">
 </head>
 <body>
+	<!-- screen visible after loading the page, main menu -->
 	<div class="full-screen" id="main-screen">
-		
+		<!-- first configuration page -->
+		<div class="menu-screen full-size hidden-soft" id="menu-screen-1">
+			<div class="menu-screen-title-container">
+				<p class="menu-screen-title"></p>
+			</div>
+			<div class="menu-screen-content-container">
+				<!-- button for game mode selection -->
+				<div class="slide-button">
+					<div class="slide-button-option slide-button-option-left unchosen" data-mode="space">Space battle</div>
+					<div class="slide-button-option slide-button-option-right chosen" data-mode="planet">Planet battle</div>
+				</div>
+
+				<!-- file dropzone -->
+				<div class="dropzone">
+					<p class="dropzone-waiting">Drop save file here</p>
+					<div class="dropzone-loading hidden-hard"></div>
+					<div class="dropzone-success hidden-hard"></div>
+					<div class="dropzone-fail hidden-hard"></div>
+				</div>
+			</div>
+			<div class="arrow-right"></div>
+		</div>
+
+		<!-- second configuration page -->
+		<div class="menu-screen full-size hidden-soft" id="menu-screen-2">
+			<div class="menu-screen-title-container">
+				<p class="menu-screen-title">Configure sides of conflict</p>
+			</div>
+			<div class="menu-screen-content-container">
+				<div class="tabs-container">
+					<div class="tab add-new required">
+						<div class="tab-icon"></div>
+						<div class="tab-name">add new</div>
+					</div>
+				</div>
+			</div>
+			<div class="arrow-left"></div>
+			<div class="arrow-right"></div>
+		</div>
+
+		<!-- third configuration page -->
+		<div class="menu-screen full-size" id="menu-screen-3">
+			<div class="menu-screen-title-container">
+				<p class="menu-screen-title">Configure fleets</p>
+			</div>
+			<div class="menu-screen-content-container">
+				<div class="tabs-container">
+					<div class="tab add-new required">
+						<div class="tab-icon"></div>
+						<div class="tab-name">Fleet 1</div>
+					</div>
+					<div class="tab add-new required">
+						<div class="tab-icon"></div>
+						<div class="tab-name">Fleet 2</div>
+					</div>
+					<div class="tab add-new required">
+						<div class="tab-icon"></div>
+						<div class="tab-name">Fleet 3</div>
+					</div>
+					<div class="tab add-new required">
+						<div class="tab-icon"></div>
+						<div class="tab-name">Fleet 4</div>
+					</div>
+					<div class="tab add-new required">
+						<div class="tab-icon"></div>
+						<div class="tab-name">Fleet 5</div>
+					</div>
+					<div class="tab add-new required">
+						<div class="tab-icon"></div>
+						<div class="tab-name">Fleet 6</div>
+					</div>
+				</div>
+			</div>
+			<div class="arrow-left"></div>
+			<div class="arrow-right"></div>
+		</div>
+
 	</div>
-	<div class="full-screen hidden" id="fleet-battle-screen">
+
+	<!-- main fleet-game canvas -->
+	<div class="full-screen hidden-soft" id="fleet-battle-screen">
 		<div class="full-size" id="star-sky"></div>
-		<div class="full-size" id="ring-world"></div>
 		<canvas class="full-size" id="fleet-canvas"></canvas>
 
 		<div class= "header"></div>
@@ -23,7 +101,7 @@
 		<div class="play-pause-indicator"></div>
 
 		<!-- fleet combat tab -->
-		<div id="fleet-combat-tab" class="hidden">
+		<div id="fleet-combat-tab" class="hidden-soft">
 			<div id="fleet-combat-tab-header">
 				<div id="fleet-combat-tab-header-label">
 					<p>Fleet combat</p>
@@ -40,7 +118,7 @@
 		</div>
 
 		<!-- fleet config tab -->
-		<div id="fleet-config-tab" class="hidden">
+		<div id="fleet-config-tab" class="hidden-soft">
 			<div id="fleet-config-tab-header">
 				<div id="fleet-config-tab-close-button">
 					<div></div>
@@ -115,7 +193,9 @@
 		</div>
 
 	</div>
-	<div class="full-screen hidden" id="army-battle-screen">
+
+	<!-- main army-game canvas -->
+	<div class="full-screen hidden-soft" id="army-battle-screen">
 		<div class="full-size" id="skyfall"></div>
 	</div>
 
