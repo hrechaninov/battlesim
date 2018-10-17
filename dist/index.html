@@ -34,7 +34,7 @@
 		</div>
 
 		<!-- second configuration page -->
-		<div class="menu-screen full-size hidden-soft" id="menu-screen-2">
+		<div class="menu-screen full-size shadowed blured" id="menu-screen-2">
 			<div class="menu-screen-title-container">
 				<p class="menu-screen-title">Configure sides of conflict</p>
 			</div>
@@ -46,15 +46,48 @@
 					</div>
 				</div>
 			</div>
+
+			<div class="dialog">
+				<p class="dialog-title">Add conflict side</p>
+				<form class="dialog-form">
+					<div class="dialog-input-container">
+						<label for="faction-name-input">name</label>
+						<input type="text" name="faction-name" id="faction-name-input" autocomplete="off" spellcheck="false" list="conflict-sides">
+						<datalist id="conflict-sides">
+							<option value="Usurpers"></option>
+							<option value="Triumvirate"></option>
+						</datalist>
+					</div>
+					<div class="dialog-input-container">
+						<label>color</label>
+						<div class="block-inputs-container">
+							<div class="block-input chosen"></div>
+							<div class="block-input"></div>
+							<div class="block-input"></div>
+						</div>
+					</div>
+					<div class="dialog-buttons-container">
+						<div class="button-group">
+							<button class="dialog-button-cancel dialog-button">cancel</button>
+							<button class="dialog-button-ok dialog-button">ready</button>
+						</div>
+						<div class="button-group">
+							<button class="dialog-button-delete dialog-button">delete</button>
+						</div>
+					</div>
+				</form>
+			</div>
+
 			<div class="arrow-left"></div>
 			<div class="arrow-right"></div>
 		</div>
 
 		<!-- third configuration page -->
-		<div class="menu-screen full-size" id="menu-screen-3">
+		<div class="menu-screen full-size hidden-soft" id="menu-screen-3">
 			<div class="menu-screen-title-container">
 				<p class="menu-screen-title">Configure fleets</p>
 			</div>
+
 			<div class="menu-screen-content-container">
 				<div class="tabs-container">
 					<div class="tab add-new required">
@@ -83,6 +116,38 @@
 					</div>
 				</div>
 			</div>
+
+			<div class="dialog">
+				<p class="dialog-title">Assign fleet</p>
+				<form class="dialog-form">
+					<div class="dialog-input-container">
+						<label for="faction-name-input">faction</label>
+						<input type="text" name="faction-name" id="faction-name-input" autocomplete="off" spellcheck="false" list="factions">
+						<datalist id="factions">
+							<option value="Republicans"></option>
+							<option value="Imperials"></option>
+							<option value="For State"></option>
+							<option value="Pirates"></option>
+							<option value="United Humanity"></option>
+						</datalist>
+					</div>
+					<div class="dialog-input-container">
+						<label>conflict side</label>
+						<div class="block-inputs-container">
+							<div class="block-input chosen">Neutral</div>
+							<div class="block-input">Usurpers</div>
+							<div class="block-input">Triumvirate</div>
+						</div>
+					</div>
+					<div class="dialog-buttons-container">
+						<div class="button-group">
+							<button class="dialog-button-cancel dialog-button">cancel</button>
+							<button class="dialog-button-ok dialog-button">ready</button>
+						</div>
+					</div>
+				</form>
+			</div>
+
 			<div class="arrow-left"></div>
 			<div class="arrow-right"></div>
 		</div>
