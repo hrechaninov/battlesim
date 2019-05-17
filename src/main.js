@@ -1,56 +1,33 @@
-import {Ship, Fleet} from "./ship.js";
+import {Fleet} from "./ship.js";
 import Sprites from "./sprites.js";
 import Game from "./game.js";
-import {Event, Modifier} from "./event.js";
-import Jomini from "jomini";
+import {Event} from "./event.js";
+import UserInputConfig from "./userInputConfig.js";
+import {mockFleets} from "./mock.js";
+import "./htmlTemplate";
+import toHTML from "./htmlTemplate";
+import {locale} from "./locale.js";
 
 window.onload = loadPage;
 
 async function loadPage(){
-	let sprites = null;
-	let canvas = document.querySelector("#fleet-canvas");
-	let fleets = [];
-	document
-		.querySelector("#fleet-config-new-fleet-button")
-		.addEventListener("click", e => { 
-			addFleet(fleets, true);
-		});
-	document
-		.querySelector("#fleet-config-tab-button-wrapper")
-		.addEventListener("click", e => {
-			const selectedFleet = document.querySelector(".selected");
-			
-			if(selectedFleet){
-				let id = selectedFleet
-					.getAttribute("id")
-					.substring(13);
-				deleteFleet(fleets, id);
-			}
-		});
-	document.querySelectorAll("input").forEach(element => {
-		element.addEventListener("input", e => {
-			console.log("option changed");
-			const selectedElem = document.querySelector(".selected");
-			const isCustom = selectedElem.classList.contains("custom");
-			const id = selectedElem.getAttribute("id").substring(13);
-			updateFleet(id, fleets, isCustom);
-		});
+	//const config = new UserInputConfig();
+	const sprites = await new Sprites().loadSprites();
+	const canvas = document.querySelector("#fleet-canvas");
+
+	window.addEventListener("resize", function(){
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
 	});
-	document.querySelectorAll("select").forEach(element => {
-		element.addEventListener("input", e => {
-			console.log("option changed");
-			const selectedElem = document.querySelector(".selected");
-			const isCustom = selectedElem.classList.contains("custom");
-			const id = selectedElem.getAttribute("id").substring(13);
-			updateFleet(id, fleets, isCustom);
-		});
-	});
-	window.__fleets = fleets;
-	
-	
-	sprites = await new Sprites().loadSprites();
-	let fg = await startNewGame(fleets, canvas, sprites);
+
+	//const {fleets, armies} = await config.finishConfig();
+	const fleets = mockFleets();
+	const fg = startNewGame(fleets, canvas, sprites);
+
+	window.devConsole = devConsole(fg);
+
 	fg.container = document.querySelector("#fleet-battle-screen");
+	fg.container.classList.toggle("hidden-hard");
 	initEvents(fg);
 	fg.events.startFleetSim.try(fg);
 	await fg.toStart;
@@ -58,48 +35,62 @@ async function loadPage(){
 	initBattleTab(fg);
 	initBattleIndicators(fg);
 	
-	window.addEventListener("resize", function(){
-		canvas.width = window.innerWidth;
-		canvas.height = window.innerHeight;
-	});
 	canvas.addEventListener("wheel", e => zoomView(e, fg));
 	document.addEventListener("keydown", e => keyDown(e, fg));
 	document.addEventListener("keyup", e => keyUp(e, fg));
 	document
 		.querySelector("#fleet-combat-tab-icon")
 		.addEventListener("click", e => toggleBattleTab(e));
+	document
+		.querySelector(".play-pause-indicator-icon")
+		.addEventListener("click", e => {
+			togglePause(fg, e.currentTarget);
+		});
 }
-async function startNewGame(fleets, canvas, sprites){
+function startNewGame(fleets, canvas, sprites){
 	const fg = new Game(canvas);
-	const debug = true;
 	
 	fg.canvas.width = window.innerWidth;
 	fg.canvas.height = window.innerHeight;
 	fg.sprites = sprites;
 
-	if(debug){
-		generateFleets(fg);
-	}
-	else{
-		fleetsByTeams(fg, fleets);
-	}
-	initFleets(fg);
+	initFleets(fg, fleets);
 
 	return fg;
 }
 function initEvents(game){
 	const lorem = "Events occur throughout the course of play. There are a whole range of events in the game, which can result in positive, negative and mixed outcomes for a player's empire. They take the form of a pop-up notification on the player's screen, which may present a player with a choice, or may simply inform the player of the consequences and require they acknowledge the event has occurred.";
 	game.events.startFleetSim = new Event({
-		name: "Start of simulation",
+		name: "Начало сражения",
 		descr: lorem
 	});
 	game.events.endFleetSim = new Event({
-		name: "End of simulation",
+		name: "Конец сражения",
 		descr: lorem
 	});
 
+	game.events.startFleetSim.onFire = ((game, event) => {
+		const forcesReports = game.sides
+			.map(side => {
+				const sideShips = game.ships
+					.filter(ship => ship.sideId === side.id);
+				const sideMen = sideShips
+					.reduce((acc, ship) => {
+						return acc + ship._crew;
+					}, 0);
+				return `на стороне ${side.name}: ${sideShips.length} кораблей и ${sideMen} членов экипажа`;
+			})
+			.join("<br>");
+		game.eventParams.startForces = game.ships.reduce((acc, ship) => {
+			return {
+				men: acc.men + ship._crew,
+				ships: acc.ships + 1
+			};
+		}, {men: 0, ships: 0});
+		event.descr = `В сражении принимают участие<br>${forcesReports}`;
+	}).bind(null, game, game.events.startFleetSim);
 	game.events.startFleetSim.option = {
-		name: "Start simulation",
+		name: "Начать",
 		descr: "",
 		callbacks: [
 			(game => {
@@ -107,179 +98,64 @@ function initEvents(game){
 			}).bind(null, game)
 		]
 	};
+
+	game.events.endFleetSim.onFire = ((game, event) => {
+		const liveShips = game.ships.filter(ship => ship.status !== "destroyed");
+		const liveShipsSideIds = liveShips.map(ship => ship.sideId);
+		const winnerSidesIds = [...new Set(liveShipsSideIds)];
+		const winnerSides = winnerSidesIds.map(sideId => {
+			const side = game.sides.find(side => side.id === sideId);
+			return side;
+		});
+		const winnerSidesNames = winnerSides
+			.map(side => side.name)
+			.join(", ");
+
+		const lossesReports = game.sides
+			.map(side => {
+				const sideShips = game.ships
+					.filter(ship => ship.sideId === side.id);
+				const sideShipsLost = sideShips
+					.filter(ship => ship.status === "destroyed");
+				const sideMenLost = sideShips.reduce((acc, ship) => {
+					return acc + ship._crewMax - ship._crew;
+				}, 0);
+				return `${side.name} потеряли ${sideShipsLost.length} кораблей и ${sideMenLost} храбрых членов экипажа.`;
+			})
+			.join("<br>");
+
+		event.descr = `В сражении победили ${winnerSidesNames}.<br>${lossesReports}`;
+	}).bind(null, game, game.events.endFleetSim);
+
 	game.events.endFleetSim.option = {
 		name: "Vae victus",
 		descr: "",
 		callbacks: [
 			(game => {
 				game.pause = true;
+			}).bind(null, game),
+			(game => {
+				game.end();
 			}).bind(null, game)
 		]
 	};
-	
+	game.events.endFleetSim.option = {
+		name: "Начать заново",
+		descr: "",
+		callbacks: [
+			() => window.location.reload(false)
+		]
+	};
 }
-function generateFleets(game){
-	game.fleet = Fleet.generateFleet({
-		corvettes: 20,
-		destroyers: 10,
-		cruisers: 5,
-		name: "Republican fleet",
-		faction: "republican",
-		color: "blue"
-	});
-	game.fleet = Fleet.generateFleet({
-		corvettes: 10,
-		destroyers: 5,
-		cruisers: 5,
-		name: "Imperial fleet",
-		faction: "imperial",
-		color: "red"
-	});
-}
-function fleetsByTeams(game, fleets){
-	let teams = new Set(fleets.map(fleet => fleet.team));
-	teams.forEach(team => {
-		let teamFleets = fleets.filter(fleet => fleet.team === team);
-		let newFleet = new Fleet(`${team} fleet`, team);
-		console.log(teamFleets);
-		teamFleets.forEach(fleet => fleet.ships.forEach(ship => newFleet.ship = ship));
-		game.fleet = newFleet;
-	});
-}
-function getFleets(){
-	const fleetNodes = Array.from(document.querySelectorAll(".fleet-config-fleet"));
-	const fleets = fleetNodes.map(node => new Fleet());
-}
-function addFleet(fleets, isCustom){
-	const container = document.querySelector("#fleet-config-tab-fleets-container");
-	const newFleet = new Fleet("Fleet name", "Faction name");
-	const isCustomClass = isCustom ? "custom" : "";
-	const tab = `
-		<div class="fleet-config-fleet ${isCustomClass}" id="fleet-config-${newFleet.id}">
-			<p class="fleet-config-fleet-name">Fleet name</p>
-			<p class="fleet-config-fleet-team">Fleet side</p>
-		</div>`;
-	container.innerHTML += tab;
-	document
-		.querySelectorAll(".fleet-config-fleet")
-		.forEach(el => {
-			el.addEventListener("click", e => {
-				selectFleetTab(e, fleets);
-			});
-		});
-	document
-		.querySelector("#fleet-config-new-fleet-button")
-		.addEventListener("click", e => {
-			addFleet(fleets, true);
-		});
-	fleets.push(newFleet);
-}
-function deleteFleet(fleets, id){
-	const index = fleets.findIndex(fleet => fleet.id === id);
-	const tab = document.querySelector(`#fleet-config-${id}`);
-
-	if(tab){
-		tab.remove();
+function initFleets(game, fleets){
+	function shuffle(arr) {
+		for (let i = arr.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[arr[i], arr[j]] = [arr[j], arr[i]];
+		}
+		return arr;
 	}
-	fleets.splice(index, 1);
-}
-function updateFleet(id, fleets, isCustom){
-	let currFleet = fleets.find(fleet => fleet.id === id);
-	const tab = document.querySelector(`#fleet-config-${id}`);
-	const nameTab = tab.querySelector(".fleet-config-fleet-name");
-	const teamTab = tab.querySelector(".fleet-config-fleet-team");
-	const newName = document.querySelector("#fleet-specs-name").value;
-	const newFaction = document.querySelector("#fleet-specs-faction").value;
-	const newTeam = document.querySelector("#fleet-specs-team").value;
-	const normalisedFaction = normaliseInputValue(newFaction, "human");
-	const normalisedTeam = normaliseInputValue(newTeam, "human");
-	const corvettes = document
-		.querySelector("#ships-specs-ship-tab-corvettes .ships-specs-ship-amount-val")
-		.value;
-	const destroyers = document
-		.querySelector("#ships-specs-ship-tab-destroyers .ships-specs-ship-amount-val")
-		.value;
-	const cruisers = document
-		.querySelector("#ships-specs-ship-tab-cruisers .ships-specs-ship-amount-val")
-		.value;
-
-	if(isCustom){
-		let index = fleets.findIndex(fleet => fleet.id === id);
-		currFleet = Fleet.generateFleet({
-			corvettes: corvettes,
-			destroyers: destroyers,
-			cruisers: cruisers,
-			name: newName,
-			faction: normalisedFaction,
-			team: normalisedTeam,
-			color: "blue",
-			id: currFleet.id
-		});
-		fleets[index] = currFleet;
-	}
-	else{
-		currFleet.name = newName;
-		currFleet.faction = normalisedFaction;
-		currFleet.team = normalisedTeam;
-	}
-	if(newName.length && newName !== "placeholder"){
-		nameTab.innerHTML = newName;
-	}
-	if(newTeam.length && newTeam !== "placeholder"){
-		teamTab.innerHTML = normalisedTeam;
-	}
-}
-function updateFleetInputs(id, fleets, isCustom){
-	const currFleet = fleets.find(fleet => fleet.id === id);
-	const reservedNames = [
-		"Republican",
-		"Imperial",
-		"Pirates",
-		"For State",
-		"United Humanity",
-		"Usurpers",
-		"Triumvirate"
-	];
-	let nameInput = document.querySelector("#fleet-specs-name");
-	let factionInput = document.querySelector("#fleet-specs-faction");
-	let teamInput = document.querySelector("#fleet-specs-team");
-	
-	if(currFleet.name.length){
-		nameInput.value = currFleet.name;
-	}
-	if(reservedNames.includes(currFleet.faction)){
-		factionInput.value = normaliseInputValue(currFleet.faction, "machine");
-	}
-	else{
-		factionInput.value = "placeholder";
-	}
-	if(currFleet.team && currFleet.team.length){
-		teamInput.value = normaliseInputValue(currFleet.team, "machine");
-	}
-	else{
-		teamInput.value = "placeholder";
-	}
-
-	if(isCustom){
-		document.querySelector("#fleet-config-tab-ships-specs").classList.remove("hidden");
-		document.querySelector("#ships-specs-ship-tab-corvettes").value = currFleet.corvettesAmount;
-		document.querySelector("#ships-specs-ship-tab-destroyers").value = currFleet.destroyersAmount;
-		document.querySelector("#ships-specs-ship-tab-cruisers").value = currFleet.cruisersAmount;
-	}
-	else{
-		document.querySelector("#fleet-config-tab-ships-specs").classList.add("hidden");
-	}
-}
-function selectFleetTab(e, fleets){
-	console.log("select tab");
-	const id = e.currentTarget.getAttribute("id").substring(13);
-	const isCustom = e.currentTarget.classList.contains("custom");
-	document.querySelectorAll(".selected").forEach(el => el.classList.remove("selected"));
-	e.currentTarget.classList.add("selected");
-
-	updateFleetInputs(id, fleets, isCustom);
-}
-function initFleets(game){
+	game.fleets = fleetsBySides(game, fleets);
 	game.fleets.forEach((fleet) => {
 		fleet.calcLocalCoords();
 	});
@@ -288,42 +164,41 @@ function initFleets(game){
 		game.ships = game.ships.concat(fleet.ships);
 		fleet.localToGlobalCoords(game.canvas);
 	});
+	game.ships = shuffle(game.ships);
 	game.ships.forEach(ship => ship.defineEnemies(game.ships));
-	console.log(game.ships);
 }
-function normaliseInputValue(inputValue, language){
-	let values = {
-		machine: [
-			"fleet-specs-faction-republican",
-			"fleet-specs-faction-imperial",
-			"fleet-specs-faction-pirate",
-			"fleet-specs-faction-forstate",
-			"fleet-specs-faction-uh",
-			"fleet-specs-team-usurpers",
-			"fleet-specs-team-triumvirate"
-		],
-		human: [
-			"Republican",
-			"Imperial",
-			"Pirates",
-			"For State",
-			"United Humanity",
-			"Usurpers",
-			"Triumvirate"
-		]
-	};
-	if(language === "human"){
-		let index = values.machine.indexOf(inputValue);
-		return values.human[index];
-	}
-	if(language === "machine"){
-		let index = values.human.indexOf(inputValue);
-		return values.machine[index];
-	}
-	return "";
+function fleetsBySides(game, fleets){
+	const sides = fleets.map(fleet => fleet.side);
+	const addedSidesIds = [];
+	const ships = [];
+
+	game.sides = sides.reduce((acc, side) => {
+		const alreadyAdded = addedSidesIds.some(id => id === side.id);
+		
+		if(!alreadyAdded){
+			acc.push(side);
+			addedSidesIds.push(side.id);
+		}
+		return acc;
+	}, []);
+	
+	fleets.forEach(fleet => fleet.ships.forEach(ship => ships.push(ship)));
+
+	return game.sides.map(side => {
+		const sideFleet = new Fleet(side.name, null, side.color);
+		sideFleet.side = side;
+		ships
+			.filter(ship => ship.sideId === side.id)
+			.forEach(ship => sideFleet.ship = ship);
+		return sideFleet;
+	});
 }
-function drawShips(game){	
-	game.ships.forEach(ship => ship.draw(game.ctx, game.sprites));
+function drawShips(game){
+	game.ships.forEach(ship => {
+		ship.drawEngineTrail(game.ctx);
+		ship.draw(game.ctx, game.sprites);
+		ship.drawLaserBeams(game.ctx);
+	});
 }
 function draw(game, {scale: scale, translateX: translateX, translateY: translateY}){
 	game.ctx.clearRect(0, 0, game.ctx.canvas.width, game.ctx.canvas.height);
@@ -336,14 +211,23 @@ function draw(game, {scale: scale, translateX: translateX, translateY: translate
 	game.ctx.translate(-translateX, -translateY);
 }
 function calculate(game){
-	game.ships.forEach(ship => ship.think(game));
+	Fleet.updateIndicators(game);
+	game.fleets.forEach(fleet => fleet.think(game));
 }
 function zoomView(e, game){
+	//вирахувати положення курсора до зуму
+	//як координату від лівого верхнього кута зі старим масштабом
+	//обчислити новий масштаб
+	//змінити масштаб
+	//вирахувати новий відступ з урахуванням нового масштабу
+	//змінити відступ
 	const speed = 1/1000;
-	const newScale = game.options.scale + speed * -e.deltaY;
-	let tension = 2.5;
-	let dx = game.options.translateX - e.clientX;
-	let dy = game.options.translateY - e.clientY;
+	const prevScale = game.options.scale;
+	const newScale = prevScale + speed * -e.deltaY;
+	const d = {
+		x: (e.clientX * prevScale - e.clientX * newScale) / (newScale / prevScale),
+		y: (e.clientY * prevScale - e.clientY * newScale) / (newScale / prevScale)
+	};
 
 	e.preventDefault();
 	if(newScale >= 10){
@@ -354,49 +238,43 @@ function zoomView(e, game){
 	}
 	else{
 		game.options.scale = newScale;
-		if(newScale > 1){
-			tension *= (newScale * 2);
-		}
-		if(e.deltaY < 0){
-			game.options.translateX += dx/tension;
-			game.options.translateY += dy/tension;
-		}
-		else{
-			game.options.translateX -= dx/tension;
-			game.options.translateY -= dy/tension;
-		}
+		game.options.translateX += d.x;
+		game.options.translateY += d.y;
 	}
 }
 function keyUp(e, game){
-	if(e.key === "w"){
+	if(e.key === "w" || e.key === "ц"){
 		game.keyMap.up = false;
 	}
-	else if(e.key === "s"){
+	else if(e.key === "s" || e.key === "ы"){
 		game.keyMap.down = false;
 	}
-	if(e.key === "a"){
+	if(e.key === "a" || e.key === "ф"){
 		game.keyMap.left = false;
 	}
-	else if(e.key === "d"){
+	else if(e.key === "d"  || e.key === "в"){
 		game.keyMap.right = false;
 	}
 	moveView(game);
 }
 function keyDown(e, game){
-	if(e.key === "w"){
+	if(e.key === "w" || e.key === "ц"){
 		game.keyMap.up = true;
 	}
-	else if(e.key === "s"){
+	else if(e.key === "s" || e.key === "ы"){
 		game.keyMap.down = true;
 	}
-	if(e.key === "a"){
+	if(e.key === "a" || e.key === "ф"){
 		game.keyMap.left = true;
 	}
-	else if(e.key === "d"){
+	else if(e.key === "d"  || e.key === "в"){
 		game.keyMap.right = true;
 	}
 	if(e.key === " "){
-		game.pause = !game.pause;
+		e.preventDefault();
+
+		const pauseIcon = document.querySelector(".play-pause-indicator-icon");
+		togglePause(game, pauseIcon);
 	}
 	moveView(game);
 }
@@ -421,40 +299,63 @@ function moveView(game){
 		game.options.translateX -= speed * tension;
 	}
 }
+function togglePause(game, icon){
+	game.pause = !game.pause;
+	if(icon && icon.classList){
+		icon.classList.toggle("play-pause-indicator-icon--paused");
+		icon.classList.toggle("play-pause-indicator-icon--play");
+	}
+}
 function gameLoop(game, time){
 	if(!game.pause){
+		game.tick(time);
 		calculate(game);
 	}
+	game.prevTime = time;
 	draw(game, game.options);
 	requestAnimationFrame(time => gameLoop(game, time));
 }
 function initBattleTab(game){
-	function appendFleet(fleet){
-		let ships = fleet.ships
-			.map(ship => {
-				return `
-				<div class="ship-container" id="ship-${ship.id}">
-					<div class="ship-health"></div>
-					<div class="ship-name">${ship.name}</div>
-					<div class="ship-class">${ship.shipClass.name}</div>
-				</div>`;})
-			.join("")
-			.replace("	", "");
-		return `
+	function appendFleet(fleet, container){
+		const fleetTemplate = `
 		<div class="fleet-container" id="fleet-${fleet.id}">
 			<div class="fleet-name">${fleet.name}</div>
-			${ships}
+			<div class="ships-container"></div>
 		</div>`;
+		const fleetElement = toHTML(fleetTemplate);
+		const shipsContainer = fleetElement.querySelector(".ships-container");
+
+		fleet.ships.forEach(ship => {
+			const order = {
+				corvette: 0,
+				destroyer: 1,
+				cruiser: 2,
+				battleship: 3,
+				titan: 4
+			};
+			const shipTemplate = `
+			<div class="ship-container" id="ship-${ship.id}" style="--order: ${order[ship.shipClass.name]}">
+				<div class="ship-status-container">
+					<div class="ship-status ship-status-shields" style="--amount: 100%"></div>
+					<div class="ship-status ship-status-armour" style="--amount: 100%"></div>
+					<div class="ship-status ship-status-hull" style="--amount: 100%"></div>
+				</div>
+				<div class="ship-name">${ship.name}</div>
+				<div class="ship-class">${locale.get(ship.shipClass.name)}</div>
+			</div>`;
+			const shipElement = toHTML(shipTemplate);
+			ship.element = shipElement;
+			shipsContainer.append(shipElement);
+		});
+
+		container.append(fleetElement);
 	}
 	let container = document.querySelector("#fleet-combat-tab-fleets");
-	let fleetTabs = "";
 
 	game.fleets.forEach(fleet => {
-		fleetTabs += appendFleet(fleet);
+		appendFleet(fleet, container);
 	});
-
-	container.innerHTML = fleetTabs;
-	//document.querySelector("#fleet-combat-tab").classList.toggle("hidden");
+	document.querySelector("#fleet-combat-tab").classList.toggle("hidden-hard");
 }
 function toggleBattleTab(e){
 	function targetIcon(target){
@@ -481,53 +382,50 @@ function toggleBattleTab(e){
 	target.classList.toggle("active");
 }
 function initBattleIndicators(game){
-	let container = document.querySelector("#fleet-combat-tab-indicator");
-	let indicators = "";
+	const container = document.querySelector("#fleet-combat-tab-indicator");
 	game.fleets.forEach(fleet => {
-		indicators += `
+		const indicatorStr = `
 		<div id="indicator-${fleet.id}" style="--color: ${fleet.color}"></div>
 		`;
+		const indicator = toHTML(indicatorStr);
+
+		fleet.indicator = indicator;
+		container.append(indicator);
 	});
-	indicators = indicators.replace(/\t/g, "");
-	container.innerHTML = indicators;
-	updateBattleIndicators(game);
+	Fleet.updateIndicators(game);
 }
-function updateBattleIndicators(game){
-	game.fleets.forEach(fleet => {
-		let indicator = document.querySelector(`#indicator-${fleet.id}`);
-		let container = document.querySelector("#fleet-combat-tab-indicator");
-		let relPower = fleet.power / game.fleets.reduce((acc, fleet) => acc + fleet.power, 0);
-		indicator.style.width = `${container.offsetWidth * relPower}px`;
-	});
-}
-function processSave(text){
-	const save = Jomini.parse(text);
-	const stellFleets = [];
-	const stellShips = save.ships;
-	const ships = [];
-	const fleets = [];
-	for(let index in save.fleet){
-		if(save.fleet[index].owner === 0 && save.fleet[index].fleet_template){
-			stellFleets.push(save.fleet[index]);
+function devConsole(game){
+	return {
+		fg: game,
+		killShip: function(shipName){
+			const ship = this.fg.ships
+				.find(ship => ship.name === shipName);
+			if(ship){
+				ship.destroy();
+				console.log(`ship ${shipName} destroyed`);
+			}
+			else{
+				console.log(`ship ${shipName} not found`);
+			}
+		},
+		watchShipsCoords: function(){
+			return this.fg.ships.map(ship => ship.absCoords);
+		},
+		watchShipTarget: function(shipName){
+			return this.fg.ships
+				.find(ship => ship.name === shipName)
+				.target
+				.name;
+		},
+		randomWatch: function(className = ""){
+			let ships = this.fg.ships;
+			if(className.length){
+				ships = ships.filter(ship => ship.shipClass.name === className);
+			}
+			const ship = ships[Math.floor(Math.random() * ships.length)];
+			ship._name = "ISS Debug";
+			console.log(`${ship.shipClass.name} ${ship.name} from ${ship.fleet.name} is now watched`);
+			return ship;
 		}
-	}
-	stellFleets.forEach(fleet => {
-		let currFleet = new Fleet(fleet.name);
-		fleet.ships.forEach(id => {
-			let currShip = new Ship(stellShips[id].name);
-			let type = save.ship_design[stellShips[id].ship_design].ship_size;
-			if(type === "corvette"){
-				currShip = currShip.corvette();
-			}
-			else if(type === "destroyer"){
-				currShip = currShip.destroyer();
-			}
-			else if(type === "cruiser"){
-				currShip = currShip.cruiser();
-			}
-			currFleet.ship = currShip;
-			ships.push(currShip);
-		});
-		fleets.push(currFleet);
-	});
+	};
 }

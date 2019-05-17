@@ -1,3 +1,5 @@
+import {shipSpriteColors} from "./factionColors.js";
+
 export class Fleet{
 	constructor(name = "FleetName", faction = "FactionName", color = "blue"){
 		this._id = Math.random().toString(32).substr(2, 16);
@@ -5,6 +7,7 @@ export class Fleet{
 		this._faction = faction;
 		this._ships = [];
 		this._color = color;
+		this._indicator = null;
 		this._x = 0;
 		this._y = 0;
 		this._a = 0;
@@ -27,22 +30,43 @@ export class Fleet{
 		return this._id;
 	}
 	get power(){
-		return 100;
+		const power = this.ships
+			.reduce((acc, ship) => {
+				if(ship.status === "destroyed")
+					return acc;
+				return acc + ship.hp;
+			}, 0);
+		
+		return power;
 	}
-	get corvettesAmount(){
-		return this._ships.filter(ship => ship.shipClass.name === "corvette");
+	get liveCorvettesAmount(){
+		return this._ships
+			.filter(ship => ship.shipClass.name === "corvette" && ship.status !== "destroyed").length;
 	}
-	get destroyersAmount(){
-		return this._ships.filter(ship => ship.shipClass.name === "destroyer");
+	get liveDestroyersAmount(){
+		return this._ships
+			.filter(ship => ship.shipClass.name === "destroyer" && ship.status !== "destroyed").length;
 	}
-	get cruisersAmount(){
-		return this._ships.filter(ship => ship.shipClass.name === "cruiser");
+	get liveCruisersAmount(){
+		return this._ships
+			.filter(ship => ship.shipClass.name === "cruiser" && ship.status !== "destroyed").length;
 	}
-	get battleshipsAmount(){
-		return this._ships.filter(ship => ship.shipClass.name === "battleship");
+	get liveBattleshipsAmount(){
+		return this._ships
+			.filter(ship => ship.shipClass.name === "battleship" && ship.status !== "destroyed").length;
+	}
+	get liveTitansAmount(){
+		return this._ships
+			.filter(ship => ship.shipClass.name === "titan" && ship.status !== "destroyed").length;
 	}
 	get team(){
 		return this._team;
+	}
+	get side(){
+		return this._side;
+	}
+	get indicator(){
+		return this._indicator;
 	}
 	set name(val){
 		this._name = val;
@@ -52,6 +76,13 @@ export class Fleet{
 	}
 	set team(val){
 		this._team = val;
+	}
+	set side(obj){
+		this._side = obj;
+	}
+	set indicator(element){
+		this._indicator = element;
+		this._indicator.style.setProperty("--color", this._color);
 	}
 	set ship(ship){
 		const newShip = ship;
@@ -66,18 +97,30 @@ export class Fleet{
 		return true;
 	}
 	calcLocalCoords(){
-		function align(currentShips, prevShips){
-			let prevCoords = prevShips.map(ship => ship.relCoords.x);
-			let prevLeft = Math.min(...prevCoords);
-			let prevRight = Math.max(...prevCoords);
+		function centerLineTo(ships, fleetCenter){
+			const coords = ships.map(ship => ship.relCoords.x);
+			const left = Math.min(...coords);
+			const right = Math.max(...coords);
+			const center = left + (right - left) / 2;
+			const dX = fleetCenter - center;
 
-			let currentCoords = currentShips.map(ship => ship.relCoords.x);
-			let currentLeft = Math.min(...currentCoords);
-			let currentRight = Math.max(...currentCoords);
+			ships.forEach(ship => ship.relCoords.x += dX);
+		}
+		function alignShips(ships){
+			const lines = [...new Set(ships.map(ship => ship.relCoords.row))];
+			const firstLineCoords = ships
+				.filter(ship => ship.relCoords.row === 0)
+				.map(ship => ship.relCoords.x);
+			const firstLineLeft = Math.min(...firstLineCoords);
+			const firstLineRight = Math.max(...firstLineCoords);
+			const fleetCenter = firstLineLeft + (firstLineRight - firstLineLeft) / 2;
 
-			const startX = ((prevRight - prevLeft) - (currentRight - currentLeft)) / 2;
+			lines.forEach(line => {
+				if(line === 0) return;
 
-			currentShips.forEach(ship => ship.relCoords.x += (startX + prevLeft));
+				const currLineShips = ships.filter(ship => ship.relCoords.row === line);
+				centerLineTo(currLineShips, fleetCenter);
+			});
 		}
 		function defineFleetSize(){
 			let xCoords = this._ships.map(ship => ship.relCoords.x);
@@ -86,68 +129,104 @@ export class Fleet{
 			this._width = Math.max(...xCoords);
 			this._height = Math.max(...yCoords);
 		}
+		function locateClass(ship, index){
+			let startY = 0;
+			let currColumn = index;
+			let classRow = 0;
+			let fleetRow = 0;
+
+			if(this.prev.length){
+				startY = Math.max(...this.prev.map(ship => ship.relCoords.y));
+				startY += this.params.margin.y;
+				fleetRow = Math.max(...this.prev.map(ship => ship.relCoords.row)) + 1;
+			}
+
+			while(currColumn >= this.columns){
+				currColumn -= this.columns;
+				classRow++;
+			}		
+			ship.relCoords = {
+				x: ship.shipClass.margin.x * currColumn,
+				y: ship.shipClass.margin.y * classRow + startY,
+				row: classRow + fleetRow
+			};
+		}
 
 		const corvettes = this._ships.filter(ship => ship.shipClass.name === "corvette");
 		const destroyers = this._ships.filter(ship => ship.shipClass.name === "destroyer");
 		const cruisers = this._ships.filter(ship => ship.shipClass.name === "cruiser");
+		const battleships = this._ships.filter(ship => ship.shipClass.name === "battleship");
+		const titans = this._ships.filter(ship => ship.shipClass.name === "titan");
 
-		const corvettesInLine = 10;
-		const destroyersInLine = 10;
-		const cruisersInLine = 8;
+		const corvettesInLine = Math.max(Math.round(corvettes.length/3) + 1, 10);
+		const destroyersInLine = Math.max(Math.round(destroyers.length/1.7) + 1, 10);
+		const cruisersInLine = Math.max(Math.round(cruisers.length/2) + 1, 10);
+		const battleshipsInLine = Math.max(Math.round(battleships.length/2) + 1, 10);
+		const titansInLine = Math.max(Math.round(titans.length/2) + 1, 10);
 
-		corvettes.forEach((corvette, index) => {
-			if(index < corvettesInLine){
-				corvette.relCoords = {
-					x: corvette.shipClass.margin.x * index,
-					y: 0
-				};
-			}
-			else{
-				corvette.relCoords = {
-					x: corvette.shipClass.margin.x * (index - corvettesInLine),
-					y: corvette.shipClass.margin.y
-				};
-			}
-		});
-		destroyers.forEach((destroyer, index) => {
-			const startY = Ship.corvetteParams().margin.y * Math.ceil(corvettes.length/corvettesInLine);
+		const corvettesPrefs = {columns: corvettesInLine, prev: []};
+		const destroyersPrefs = {
+			columns: destroyersInLine,
+			prev: corvettes,
+			params: Ship.corvetteParams()
+		};
+		const cruisersPrefs = {
+			columns: cruisersInLine,
+			prev: destroyers,
+			params: Ship.destroyerParams()
+		};
+		const battleshipsPrefs = {
+			columns: battleshipsInLine,
+			prev: cruisers,
+			params: Ship.battleshipParams()
+		};
+		const titansPrefs = {
+			columns: titansInLine,
+			prev: battleships,
+			params: Ship.titanParams()
+		};
 
-			if(index < destroyersInLine){
-				destroyer.relCoords = {
-					x:destroyer.shipClass.margin.x * index,
-					y: startY
-				};
-			}
-			else{
-				destroyer.relCoords = {
-					x:destroyer.shipClass.margin.x * (index - destroyersInLine),
-					y: startY + destroyer.shipClass.margin.y
-				};
-			}
-		});
+		if(!destroyers.length){
+			cruisersPrefs.prev = corvettes;
+		}
+		if(!cruisers.length){
+			if(destroyers.length)
+				battleshipsPrefs.prev = destroyers;
+			else
+				battleshipsPrefs.prev = corvettes;
+		}
+		if(!battleships.length){
+			if(cruisers.length)
+				titansPrefs.prev = cruisers;
+			else if(destroyers.length)
+				titansPrefs.prev = destroyers;
+			else
+				titansPrefs.prev = corvettes;
+		}
 
-		align(destroyers, corvettes);
-
-		cruisers.forEach((cruiser, index) => {
-			const startY = Ship.corvetteParams().margin.y * Math.ceil(corvettes.length/corvettesInLine)
-				+ Ship.destroyerParams().margin.y * Math.ceil(destroyers.length/corvettesInLine);
-			
-			if(index < cruisersInLine){
-				cruiser.relCoords = {
-					x: Ship.cruiserParams().margin.x * index,
-					y: startY
-				};
-			}
-			else{
-				cruiser.relCoords = {
-					x: Ship.cruiserParams().margin.x * (index - cruisersInLine),
-					y: startY + Ship.cruiserParams().margin.y
-				};
-			}
-		});
+		corvettes.forEach(locateClass, corvettesPrefs);
+		destroyers.forEach(locateClass, destroyersPrefs);
+		cruisers.forEach(locateClass, cruisersPrefs);
+		battleships.forEach(locateClass, battleshipsPrefs);
+		titans.forEach(locateClass, titansPrefs);
 		
-		align(cruisers, destroyers);
+		alignShips(this._ships);
 		defineFleetSize.call(this);
+	}
+	think(game){
+		const sidesPriorities = game.sides
+			.filter(side => side.id !== this.side.id)
+			.map(side => {
+				const power = game.fleets
+					.find(fleet => fleet.side.id === side.id)
+					.power;
+				return {
+					id: side.id,
+					priority: power / this.power
+				};
+			});
+		this.ships.forEach(ship => ship.thinkNew(game, sidesPriorities));
+		console.log(sidesPriorities);
 	}
 	draw(ctx, sprites){
 		ctx.translate(this._x, this._y);
@@ -156,6 +235,11 @@ export class Fleet{
 		ctx.rotate(-this._a);
 		ctx.translate(-this._x, -this._y);
 	}
+	updateIndicator(totalPower){
+		const relPower = this.power / totalPower;
+
+		this.indicator.style.setProperty("--rel-width", relPower);
+	}
 	localToGlobalCoords(canvas){
 		this._ships.forEach(ship => {
 			let cX = this._x;
@@ -163,39 +247,27 @@ export class Fleet{
 			let a = this._a;
 			let sin = Math.sin(a);
 			let cos = Math.cos(a);
-			let x = ship.relCoords.x + this._x;
-			let y = ship.relCoords.y + this._y;
+			let shipX = ship.relCoords.x + this._x;
+			let shipY = ship.relCoords.y + this._y;
+			let nozzleX = ship.relCoords.x + ship.engineRelCoords.x + this._x;
+			let nozzleY = ship.relCoords.y + ship.engineRelCoords.y + this._y;
 
 			let na = - a;
-			let nx = Math.round((cos * (x - cX)) + (sin * (y - cY)) + cX + canvas.width/2);
-			let ny = Math.round((cos * (y - cY)) - (sin * (x - cX)) + cY + canvas.height/2);
+			let shipNx = Math.round((cos * (shipX - cX)) + (sin * (shipY - cY)) + cX + canvas.width/2);
+			let shipNy = Math.round((cos * (shipY - cY)) - (sin * (shipX - cX)) + cY + canvas.height/2);
+			let nozzleNx = Math.round((cos * (nozzleX - cX)) + (sin * (nozzleY - cY)) + cX + canvas.width/2);
+			let nozzleNy = Math.round((cos * (nozzleY - cY)) - (sin * (nozzleX - cX)) + cY + canvas.height/2);
 
 			ship.absCoords = {
-				x: nx,
-				y: ny,
+				x: shipNx,
+				y: shipNy,
 				a: na
 			};
+			ship.engineCoords = {
+				x: nozzleNx,
+				y: nozzleNy
+			};
 		});
-	}
-	generateShips({
-		corvettes: corvettes,
-		destroyers: destroyers,
-		cruisers: cruisers,
-		battleships: battleships
-	}){
-		this._ships = [];
-		for(let i = 0; i < corvettes; i++){
-			this._ships.push(new Ship(Ship.randomName("corvette"), this._faction).corvette());
-		}
-		for(let i = 0; i < destroyers; i++){
-			this._ships.push(new Ship(Ship.randomName("destroyer"), this._faction).destroyer());
-		}
-		for(let i = 0; i < cruisers; i++){
-			this._ships.push(new Ship(Ship.randomName("cruiser"), this._faction).cruiser());
-		}
-		for(let i = 0; i < battleships; i++){
-			this._ships.push(new Ship(Ship.randomName("cruiser"), this._faction).cruiser());
-		}
 	}
 	static positionFleets(fleets){
 		const PI = Math.PI;
@@ -229,14 +301,15 @@ export class Fleet{
 		corvettes: corvettes,
 		destroyers: destroyers,
 		cruisers: cruisers,
+		battleships: battleships,
+		titans: titans,
 		name: name,
 		faction: faction,
-		team: team,
+		side: side,
 		color: color,
 		id: id
 	}){
 		let fleet = new Fleet(name, faction, color);
-		fleet.team = team;
 		for(let i = 0; i < corvettes; i++){
 			fleet.ship = new Ship(Ship.randomName("corvette"), faction).corvette();
 		}
@@ -246,10 +319,29 @@ export class Fleet{
 		for(let i = 0; i < cruisers; i++){
 			fleet.ship = new Ship(Ship.randomName("cruiser"), faction).cruiser();
 		}
+		for(let i = 0; i < battleships; i++){
+			fleet.ship = new Ship(Ship.randomName("battleship"), faction).battleship();
+		}
+		for(let i = 0; i < titans; i++){
+			fleet.ship = new Ship(Ship.randomName("titan"), faction).titan();
+		}
 		if(id){
 			fleet._id = id;
 		}
+		fleet.ships.forEach(ship => ship.sideId = side.id);
+		fleet.side = {
+			name: side.name,
+			id: side.id,
+			color: color
+		};
 		return fleet;
+	}
+	static updateIndicators(game){
+		const totalPower = game.fleets
+			.reduce((acc, fleet) => acc + fleet.power, 0);
+
+		game.fleets
+			.forEach(fleet => fleet.updateIndicator(totalPower));
 	}
 }
 class Weapon{
@@ -258,33 +350,70 @@ class Weapon{
 		this._damage = damage;
 		this._hitChance = hitChance;
 		this._cooldown = cooldown;
-		this._isReady = true;
+		this._timeToReady = 0;
+		this._beam = {
+			startX: 0,
+			startY: 0,
+			endX: 0,
+			endY: 0,
+			lifeTime: 0
+		};
+		this._damageModifiers = [];
+		this._reloadModifiers = [];
 	}
 	hit(target){
 		return Math.random() * this._hitChance > target.evace;
 	}
 	fire(target){
 		this.reload();
+		
 		if(this.hit(target)){
-			const COEF = 0.04;
 			const damage = Math.random() * (this._damage.max - this._damage.min) + this._damage.min;
+			const modifier = this._damageModifiers.reduce((acc, modifier) => {
+				return acc + modifier.value;
+			}, 1);
 
-			target.damage = damage * COEF;
+			this._beam.endX = target.absCoords.x + Math.random() * 10 - 5;
+			this._beam.endY = target.absCoords.y + Math.random() * 10 - 5;
+			this._beam.lifeTime = 500;
+
+			target.damage = damage * modifier;
 		}
-		else
+		else{
+			this._beam.endX = target.absCoords.x + Math.random() * 10 - 5;
+			this._beam.endY = target.absCoords.y + Math.random() * 10 - 5;
+			this._beam.lifeTime = 500;
 			return;
+		}
 	}
-	reload(){
-		const self = this;
-		this._ready = false;
-		const id = setTimeout(() => {
-			self._ready = true;
-			console.log(`${self._type} fires`);
-		}, this._cooldown);
-		clearTimeout(id);
+	reload(coef = 1){
+		const modifier = this._reloadModifiers.reduce((acc, modifier) => {
+			return acc + modifier.value;
+		}, 1);
+		this._timeToReady = this._cooldown * coef * modifier;
+	}
+	update(dTime){
+		this._timeToReady -= dTime;
+		this._beam.lifeTime -= dTime;
+	}
+	draw(ctx){
+		if(this._beam.lifeTime > 0){
+			ctx.save();
+			ctx.strokeStyle = "rgba(66, 244, 101, 1)";
+			ctx.lineWidth = 0.5;
+			ctx.beginPath();
+			ctx.moveTo(this._beam.startX, this._beam.startY);
+			ctx.lineTo(this._beam.endX, this._beam.endY);
+			ctx.stroke();
+			ctx.restore();
+		}
+	}
+	set coords(obj){
+		this._beam.startX = obj.x;
+		this._beam.startY = obj.y;
 	}
 	get isReady(){
-		return this._isReady;
+		return this._timeToReady < 0;
 	}
 }
 export class Ship{
@@ -300,8 +429,12 @@ export class Ship{
 		this._maxSpeed = 1;
 		this._range = 1;
 		this._weapons = [];
+		this._crew = 20;
 		this._target = null;
 		this._fleet = null;
+		this._sideId = null;
+		this._isTargetOf = [];
+		this._element = null;
 		this._relCoords = {
 			x: 0,
 			y: 0
@@ -312,8 +445,8 @@ export class Ship{
 			a: 0
 		};
 		this._targetCoords = {
-			x: 10,
-			y: 10,
+			x: 0,
+			y: 0,
 			a: 0
 		};
 	}
@@ -347,29 +480,127 @@ export class Ship{
 	get hp(){
 		return this._hp;
 	}
+	get hpMax(){
+		return this._hpMax;
+	}
+	get engineCoords(){
+		if(this._engine && this._engine.absX && this._engine.absY){
+			return {
+				x: this._engine.absX,
+				y: this._engine.absY
+			};
+		}
+		else return null;
+	}
+	get engineRelCoords(){
+		if(this._engine){
+			return {
+				x: this._engine.relX,
+				y: this._engine.relY
+			};
+		}
+		else return null;
+	}
+	get engineTrail(){
+		if(this._engine){
+			return this._engine.trail;
+		}
+		else return null;
+	}
+	get sideId(){
+		return this._sideId;
+	}
+	get element(){
+		return this._element;
+	}
+	get isTargetOf(){
+		return this._isTargetOf;
+	}
+	get target(){
+		return this._target;
+	}
 	set fleet(flt){
 		this._fleet = flt;
 	}
+	set sideId(str){
+		this._sideId = str;
+	}
 	set damage(amount){
-		if(this._hp - amount <= 0){
-			this._hp = 0;
-			this._status = "destroyed";
+		if(this.status === "destroyed") return;
+
+		let damage = amount;
+		const damageToShields = Math.min(damage, this._shields);
+		const damageToArmour = Math.min(damage - damageToShields, this._armour);
+		const damageToHull = Math.min(damage - damageToShields - damageToArmour, this._hp);
+
+		if(damageToShields > 0){
+			this._shields = Math.max(this._shields - damageToShields, 0);
+		}
+		if(damageToArmour > 0){
+			this._armour = Math.max(this._armour - damageToArmour, 0);
+		}
+		if(damageToHull > 0){
+			this._hp = Math.max(this._hp - damageToHull, 0);
+		}
+		
+		if(this._hp < this._hpMax * 0.75){
+			this.checkForCriticalDamage(this._hp/this._hpMax);
+		}
+		if(this._hp <= 0){
+			this.destroy();
 		}
 		else{
-			this._hp -= amount;
+			this._shieldsIndicator.style = `--amount: ${Math.round(this._shields * 100 / this._shieldsMax)}%`;
+			this._armourIndicator.style = `--amount: ${Math.round(this._armour * 100 / this._armourMax)}%`;
+			this._hullIndicator.style = `--amount: ${Math.round(this._hp * 100 / this._hpMax)}%`;
 		}
 	}
-	set relCoords({x: xCoord, y: yCoord}){
+	set relCoords({x: xCoord, y: yCoord, row: row}){
 		this._relCoords.x = xCoord;
 		this._relCoords.y = yCoord;
+		this._relCoords.row = row;
 	}
 	set absCoords({x: xCoord, y: yCoord, a: angle}){
 		this._absCoords.x = xCoord;
 		this._absCoords.y = yCoord;
 		this._absCoords.a = angle;
 	}
+	set engineCoords(obj){
+		this._engine.absX = obj.x;
+		this._engine.absY = obj.y;
+	}
+	set faction(str){
+		this._faction = str;
+		this._color = this.defineColor();
+	}
+	set element(el){
+		this._element = el;
+		this._shieldsIndicator = el.querySelector(".ship-status-shields");
+		this._armourIndicator = el.querySelector(".ship-status-armour");
+		this._hullIndicator = el.querySelector(".ship-status-hull");
+	}
+	set target(ship){
+		this._target = ship;
+		if(ship){
+			ship.isTargetOf = this;
+		}
+	}
+	set isTargetOf(ship){
+		if(!ship) return;
+		this._isTargetOf = this._isTargetOf.filter(enemy => {
+			return enemy.status !== "destroyed" && enemy.target === this;
+		});
+		this._isTargetOf.push(ship);
+	}
 	think(game){
-		if(this._status === "destroyed") return;
+		if(this._status === "destroyed"){
+			return;
+		}
+		if(this._hp < this._hpCritical){
+			this.evacuateCrew();
+			return;
+		}
+		this.update(game.dTime);
 		const liveEnemyShips = this._enemyShips.filter(ship => {
 			return ship.status !== "destroyed";
 		});
@@ -381,9 +612,9 @@ export class Ship{
 		if(this._target && this._target.status !== "destroyed"){
 			const canFire = this._weapons.some(weapon => weapon.isReady);
 			if(canFire){
-				this.fire(this._target);
-				this._status = "firing";
+				this.fire(this._debug);
 			}
+			this._status = "in combat";
 		}
 		else if(reachableEnemyShips.length > 0){
 			this._target = reachableEnemyShips[Math.floor(Math.random() * reachableEnemyShips.length)];
@@ -402,10 +633,91 @@ export class Ship{
 		else{
 			this._chosenEnemy = null;
 			this._status = "idle";
-			console.log("idle");
 			game.events.endFleetSim.try(game);
 		}
 		this.moveRad();
+	}
+	//TODO rename new method, delete old method
+	thinkNew(game, sidesPriorities){
+		if(this._status === "destroyed"){
+			return;
+		}
+		let maxPriority = 1;
+		let shipWithHighestPriority = null;
+
+		//TODO remove after debug
+		if(this._name === "ISS Debug"){
+			this._debugPriorities = [];
+		}
+		
+		this._enemyShips
+			.filter(ship => ship.status !== "destroyed")
+			.forEach(ship => {
+				const distanceCoef = 4;
+				const typeCoef = 0.1;
+				const sidePriorityCoef = 1;
+				const typesPriorities = {
+					corvette: 0,
+					destroyer: 1,
+					cruiser: 2,
+					battleship: 3,
+					titan: 4,
+				};
+				const sidePriority = sidesPriorities.find(side => side.id === ship.sideId).priority;
+				const targetPriority = ship.isTargetOf ? 1 / 2**ship.isTargetOf.length : 0;
+				const distanceToShip = this.distanceTo(ship.absCoords);
+				const isTargetOf = this._isTargetOf.find(enemy => enemy.id === ship.id);
+				const isTargetOfCoef = isTargetOf ? 1.05 : 1;
+				let inCombatCoef = 2;
+				let reversedTypePriority = 1;
+				let shipPriority = 1;
+
+				//if in shooting range with ship with a small margin
+				//for manuevers
+				if(distanceToShip <= (this._range + this._range * 0.05)){
+					inCombatCoef += 0.1;
+					if(isTargetOf){
+						reversedTypePriority += ship.hp / ship.hpMax * 0.01;
+					}
+				}
+
+				shipPriority *= 1 + 1 / distanceToShip * distanceCoef;
+				shipPriority *= 1 + 1 / (Math.abs(typesPriorities[this.shipClass.name] -
+					typesPriorities[ship.shipClass.name]) + 1) * typeCoef;
+				shipPriority *= 1 + sidePriority * sidePriorityCoef;
+				shipPriority *= 1 + targetPriority;
+				shipPriority *= inCombatCoef;
+				shipPriority *= isTargetOfCoef;
+				shipPriority *= reversedTypePriority;
+				
+				if(shipPriority >= maxPriority){
+					maxPriority = shipPriority;
+					shipWithHighestPriority = ship;
+				}
+				//TODO remove after debug
+				if(this._name === "ISS Debug"){
+					this._debugPriorities.push(
+						{
+							type: ship.shipClass.name,
+							priority: shipPriority,
+							distance: this.distanceTo(ship.absCoords)
+						}
+					);
+				}
+			});
+
+		if(shipWithHighestPriority === null){
+			const randomEnemyShip = this._enemyShips[Math.floor(Math.random() * this._enemyShips.length)];
+			this.target = randomEnemyShip;
+		}
+		else{
+			this.target = shipWithHighestPriority;
+		}
+		//TODO remove after debug
+		if(this._name === "ISS Debug"){
+			console.table(this._debugPriorities);
+		}
+		this.update(game.dTime);
 	}
 	angleTo({x: x, y: y}){
 		if(x === this._absCoords.x && y === this._absCoords.y){
@@ -418,19 +730,39 @@ export class Ship{
 		this._targetCoords.x = x;
 		this._targetCoords.y = y;
 	}
+	distanceTo({x: x, y: y}){
+		return Math.hypot(this._absCoords.x - x, this._absCoords.y - y);
+	}
 	defineEnemies(ships){
-		this._enemyShips = ships.filter(ship => ship.fleet !== this._fleet);
+		this._enemyShips = ships.filter(ship => ship.sideId !== this._sideId);
 	}
-	searchEnemy(){
-
+	checkForCriticalDamage(relativeHp){
+		const chanceToKillCrewMembers = Math.min(0.05 / relativeHp, 0.5);
+		
+		if(Math.random() < chanceToKillCrewMembers){
+			this.killCrewMembers(Math.random() * 0.1 + 0.05);
+		}
 	}
-	aim(){
-
+	destroy(){
+		this.killCrewMembers(0.94);
+		this._status = "destroyed";
+		this._element.remove();
+	}
+	evacuateCrew(){
+		this._status = "destroyed";
+		this._element.remove();
+	}
+	killCrewMembers(percents){
+		const killed = Math.round(this._crew * percents);
+		this._crew -= killed;
+		if(this._crew < 0){
+			this._crew = 0;
+		}
 	}
 	fire(){
 		this._weapons
 			.filter(weapon => weapon.isReady)
-			.forEach(weapon => weapon.fire(this._target));
+			.forEach(weapon => weapon.fire(this._target, this._debug));
 	}
 	moveLin(){
 		const COEF = 0.2;
@@ -477,6 +809,53 @@ export class Ship{
 			this._absCoords.a += -Math.sign(da) * radSpeed;
 		}
 	}
+	update(dTime){
+		const critialDamage = this._hp < this._hpCritical;
+		const hasTarget = this._target && this._target.status !== "destroyed";
+		const targetInRange = this.distanceTo(this._target.absCoords) <= this._range;
+		const canFire = hasTarget
+			&& targetInRange
+			&& this._weapons.some(weapon => weapon.isReady);
+
+		if(critialDamage){
+			this.evacuateCrew();
+			return;
+		}
+		if(hasTarget && !targetInRange){
+			this.directionTo(this._target.absCoords);
+			this.angleTo(this._target.absCoords);
+			this.moveLin();
+		}
+		if(canFire){
+			this.fire();
+		}
+		this.moveRad();
+		this.updateEngine(dTime);
+		this.updateWeapons(dTime);
+	}
+	updateEngine(dTime){
+		if(this.status !== "destroyed" && this.status !== "in combat"){
+			const local = {
+				relX: this._engine.relX,
+				relY: this._engine.relY
+			};
+			const point = this.toGlobal(local);
+
+			point.lifeTime = 1000;
+			this._engine.trail.push(point);
+		}
+
+		this._engine.trail.forEach(point => {
+			point.lifeTime -= dTime;
+		});
+		this._engine.trail = this._engine.trail.filter(point => point.lifeTime > 0);
+	}
+	updateWeapons(dTime){
+		this._weapons.forEach(weapon => {
+			weapon.coords = this.toGlobal(this._weaponsRelCoords);
+			weapon.update(dTime);
+		});
+	}
 	corvette(){
 		this._class = {
 			name: "corvette",
@@ -489,14 +868,31 @@ export class Ship{
 				y: 18
 			}
 		};
-		this._hp = 400;
+		this._hpMax = 500;
+		this._hpCritical = 50;
+		this._hp = this._hpMax;
+		this._armourMax = 100;
+		this._armour = this._armourMax;
+		this._shieldsMax = 100;
+		this._shields = this._shieldsMax;
 		this._evace = 0.3;
-		this._range = 50;
+		this._range = 60;
 		this._maxSpeed = 30;
+		this._crewMax = 20;
+		this._crew = this._crewMax;
 		this._weapons = [
 			new Weapon("laser", {min: 20, max: 40}, 0.95, 3000),
 			new Weapon("cinetic", {min: 20, max: 50}, 0.8, 3000)
 		];
+		this._weaponsRelCoords = {
+			relX: 0,
+			relY: 0
+		};
+		this._engine = {
+			relX: 0,
+			relY: 5,
+			trail: []
+		};
 		return this;
 	}
 	destroyer(){
@@ -511,14 +907,31 @@ export class Ship{
 				y: 23
 			}
 		};
-		this._hp = 800;
+		this._hpMax = 900;
+		this._hpCritical = 90;
+		this._hp = this._hpMax;
+		this._armourMax = 300;
+		this._armour = this._armourMax;
+		this._shieldsMax = 300;
+		this._shields = this._shieldsMax;
 		this._evace = 0.2;
-		this._range = 65;
+		this._range = 90;
 		this._maxSpeed = 25;
+		this._crewMax = 50;
+		this._crew = this._crewMax;
 		this._weapons = [
 			new Weapon("laser", {min: 30, max: 50}, 0.95, 3100),
 			new Weapon("cinetic", {min: 40, max: 70}, 0.8, 3500)
 		];
+		this._weaponsRelCoords = {
+			relX: 0,
+			relY: 0
+		};
+		this._engine = {
+			relX: 0,
+			relY: 8,
+			trail: []
+		};
 		return this;
 	}
 	cruiser(){
@@ -533,34 +946,169 @@ export class Ship{
 				y: 30
 			}
 		};
-		this._hp = 1400;
+		this._hpMax = 1400;
+		this._hpCritical = 140;
+		this._hp = this._hpMax;
+		this._armourMax = 500;
+		this._armour = this._armourMax;
+		this._shieldsMax = 500;
+		this._shields = this._shieldsMax;
 		this._evace = 0.15;
-		this._range = 85;
+		this._range = 120;
 		this._maxSpeed = 20;
+		this._crewMax = 90;
+		this._crew = this._crewMax;
 		this._weapons = [
 			new Weapon("laser", {min: 40, max: 60}, 0.95, 3300),
 			new Weapon("cinetic", {min: 40, max: 70}, 0.8, 3500),
 			new Weapon("cinetic", {min: 40, max: 70}, 0.8, 3500)
 		];
+		this._weaponsRelCoords = {
+			relX: 0,
+			relY: 0
+		};
+		this._engine = {
+			relX: 0,
+			relY: 13,
+			trail: []
+		};
+		return this;
+	}
+	battleship(){
+		this._class = {
+			name: "battleship",
+			size: {
+				x: 16,
+				y: 35
+			},
+			margin: {
+				x: 40,
+				y: 42
+			}
+		};
+		this._hpMax = 2500;
+		this._hpCritical = 220;
+		this._hp = this._hpMax;
+		this._armourMax = 800;
+		this._armour = this._armourMax;
+		this._shieldsMax = 1100;
+		this._shields = this._shieldsMax;
+		this._evace = 0.1;
+		this._range = 200;
+		this._maxSpeed = 19;
+		this._crewMax = 130;
+		this._crew = this._crewMax;
+		this._weapons = [
+			new Weapon("laser", {min: 65, max: 90}, 0.95, 3600),
+			new Weapon("laser", {min: 65, max: 90}, 0.95, 3600),
+			new Weapon("cinetic", {min: 50, max: 100}, 0.7, 3800)
+		];
+		this._weaponsRelCoords = {
+			relX: 0,
+			relY: 0
+		};
+		this._engine = {
+			relX: 0,
+			relY: 18,
+			trail: []
+		};
+		return this;
+	}
+	titan(){
+		this._class = {
+			name: "titan",
+			size: {
+				x: 26,
+				y: 70
+			},
+			margin: {
+				x: 55,
+				y: 80
+			}
+		};
+		this._hpMax = 4000;
+		this._hpCritical = 220;
+		this._hp = this._hpMax;
+		this._armourMax = 1200;
+		this._armour = this._armourMax;
+		this._shieldsMax = 1750;
+		this._shields = this._shieldsMax;
+		this._evace = 0.05;
+		this._range = 250;
+		this._maxSpeed = 19;
+		this._crewMax = 200;
+		this._crew = this._crewMax;
+		this._weapons = [
+			new Weapon("laser", {min: 65, max: 90}, 0.95, 3600),
+			new Weapon("laser", {min: 65, max: 90}, 0.95, 3600),
+			new Weapon("cinetic", {min: 50, max: 100}, 0.7, 3800)
+		];
+		this._weaponsRelCoords = {
+			relX: 0,
+			relY: -35
+		};
+		this._engine = {
+			relX: 0,
+			relY: 35,
+			trail: []
+		};
 		return this;
 	}
 	defineColor(){
-		if(this._faction === "republican") return "blue";
-		else if(this._faction === "imperial") return "red";
-		else if(this._faction === "for state") return "grey";
-		else if(this._faction === "pirates") return "black";
-		else if(this._faction === "united humanity") return "violet";
-		else return "blue";
+		const factionColor = shipSpriteColors.get(this._faction.toLowerCase());
+
+		if(!factionColor)
+			return "blue";
+		return factionColor;
 	}
 	draw(ctx, sprites){
 		if(this._status === "destroyed") return;
 		ctx.translate(this._absCoords.x, this._absCoords.y);
 		ctx.rotate(this._absCoords.a);
 
-		ctx.drawImage(sprites[this._class.name][this._color], 0, 0, this._class.size.x, this._class.size.y);
+		ctx.drawImage(sprites[this._class.name][this.color], -this._class.size.x/2, -this._class.size.y/2, this._class.size.x, this._class.size.y);
 
 		ctx.rotate(-this._absCoords.a);
 		ctx.translate(-this._absCoords.x, -this._absCoords.y);
+	}
+	drawLaserBeams(ctx){
+		if(this._status === "destroyed") return;
+		this._weapons.forEach(weapon => weapon.draw(ctx));
+	}
+	drawEngineTrail(ctx){
+		if(this._status === "destroyed") return;
+		const trail = this.engineTrail;
+		ctx.save();
+		ctx.strokeStyle = `rgba(63, 137, 255, ${0.8})`;
+		ctx.beginPath();
+		trail.forEach((point, i, arr) => {
+			const nextPoint = arr[i + 1];
+			if(nextPoint){
+				ctx.moveTo(point.x, point.y);
+				ctx.lineTo(nextPoint.x, nextPoint.y);
+			}
+		});
+		ctx.stroke();
+		ctx.restore();
+	}
+	toGlobal({relX, relY}){
+		function rotate({x, y, cx, cy}, angle) {
+			const cos = Math.cos(-angle);
+			const sin = Math.sin(-angle);
+			const nx = (cos * (x - cx)) + (sin * (y - cy)) + cx;
+			const ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+			
+			return {
+				x: nx,
+				y: ny
+			};
+		}
+		return rotate({
+			x: relX + this._absCoords.x,
+			y: relY + this._absCoords.y,
+			cx: this._absCoords.x,
+			cy: this._absCoords.y
+		}, this._absCoords.a);
 	}
 	static corvetteParams(){
 		return {
@@ -595,6 +1143,30 @@ export class Ship{
 			margin: {
 				x: 28,
 				y: 30
+			}
+		};
+	}
+	static battleshipParams(){
+		return {
+			size: {
+				x: 16,
+				y: 35
+			},
+			margin: {
+				x: 40,
+				y: 42
+			}
+		};
+	}
+	static titanParams(){
+		return {
+			size: {
+				x: 26,
+				y: 70
+			},
+			margin: {
+				x: 55,
+				y: 80
 			}
 		};
 	}

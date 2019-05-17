@@ -12,6 +12,7 @@ export class Event{
 		this._triggered = false;
 		this._mayFire = false;
 		this._options = [];
+		this._onFire = [];
 	}
 	get triggered(){
 		return this._triggered;
@@ -26,9 +27,6 @@ export class Event{
 			<div class="event-tab-header">
 				<div class="header-name-container">
                 	<h2>${this._name}</h2>
-				</div>
-				<div class="header-button-container">
-					<div class="header-close-button"></div>
 				</div>
             </div>
             <div class="event-tab-body">
@@ -51,11 +49,11 @@ export class Event{
 				node.remove();
 			});
 		});
-		node.querySelector(".header-close-button").addEventListener("click", e => {
-			node.classList.add("hidden");
-		});
 
 		return node;
+	}
+	set descr(str){
+		this._descr = str;
 	}
 	set option({name: name, descr: descr = "", callbacks: callbacks}){
 		let option = new Option();
@@ -65,6 +63,9 @@ export class Event{
 		callbacks.forEach(callback => option.callback = callback);
 
 		this._options.push(option);
+	}
+	set onFire(callback){
+		this._onFire.push(callback);
 	}
 	try(game){
 		if(!this._triggered && Math.random() < this._chance){
@@ -76,6 +77,7 @@ export class Event{
 		if(this._requirePause){
 			game.pause = true;
 		}
+		this._onFire.forEach(callback => callback());
 		game.container.appendChild(this.html);
 	}
 }

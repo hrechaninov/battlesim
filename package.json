@@ -15,10 +15,11 @@
     "path": "^0.12.7",
     "webpack": "^4.16.5",
     "webpack-cli": "^3.1.0",
-    "webpack-dev-server": "^3.1.5"
+    "webpack-dev-server": "^3.1.5",
+    "worker-loader": "^2.0.0"
   },
   "dependencies": {
     "jomini": "^0.2.7",
-    "three": "^0.95.0"
+    "jszip": "^3.1.5"
   }
 }

@@ -18,6 +18,7 @@
 	--ship-class-color: #FFAB3F;
 	--text-color-main: #333;
 	--text-color-inverted: white;
+	--color-main: rgb(72, 157, 138);
 	--menu-color-main: rgb(72, 157, 138);
 	--menu-color-main-semitransparent: rgba(72, 157, 138, 0.5);
 
@@ -64,6 +65,12 @@ body{
 	background: linear-gradient(#004022, #000e03);
 	opacity: 0.8;
 }
+.version{
+	position: absolute;
+	bottom: 2px;
+	right: 2px;
+	color: rgb(130, 130, 130);
+}
 .menu-icon{
 	position: absolute;
 	top: 0;
@@ -81,142 +88,32 @@ body{
 .menu-icon:active .background{
 	fill: url(#active-gradient);
 }
-.play-pause-indicator{
+.play-pause-indicator-container{
 	position: absolute;
-	top: 5px;
-	right: 10px;
-	width: 60px;
-	height: 25px;
-}
-
-
-
-/* fleet config tab */
-#fleet-config-tab{
-	position: absolute;
-	display: grid;
-	grid-template-columns: auto auto;
-	grid-template-rows: 35px auto;
-	min-width: 300px;
-	min-height: 45vh;
-	top: 36px;
-	left: 10px;
-	color: white;
-	background: rgba(29, 41, 37, 0.8);
-	font-size: 17px;
-}
-#fleet-config-tab-header{
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: flex-end;
-	grid-column: 1/3;
-	grid-row: 1/2;
-}
-#fleet-config-tab-left-container{
-	grid-column: 1/2;
-	grid-row: 2/3;
-}
-#fleet-config-tab-right-container{
-	display: flex;
-	flex-direction: column;
-	grid-column: 2/3;
-	grid-row: 2/3;
-}
-#fleet-config-tab-close-button{
-	width: 30px;
-	height: 30px;
-}
-.fleet-config-tab-fleet-tab{
-	min-width: 300px;
-	width: 100%;
-	margin: 5px;
-}
-#fleet-config-tab-close-button{
-	margin-right: 5px;
-}
-.ships-specs-ship-tab-amount{
+	top: 7px;
+	right: 20px;
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 }
-.ships-specs-ship-tab{
-	display: flex;
-	flex-direction: row;
-	justify-content: space-between;
-	align-items: center;
+.play-pause-indicator-label{
+	display: block;
+	color: var(--color-main);
+	margin: 0px 10px;
 }
-#fleet-config-tab-fleet-specs{
-	display: flex;
-	flex-direction: column;
-	border-top: 1px solid white;
-	border-bottom: 1px solid white;
-	padding: 15px 10px;
-	margin: 10px;
-}
-#fleet-config-tab-ships-specs{
-	display: flex;
-	flex-direction: column;
-	padding: 15px 10px;
-	margin: 10px;
-}
-.container-label{
-	font-size: 20px;
-	text-align: center;
-	padding: 8px 0;
-}
-.ships-specs-button{
-	padding: 5px;
+.play-pause-indicator-icon{
+	display: block;
+	width: 20px;
+	height: 20px;
+	background-size: contain;
 	cursor: pointer;
-	user-select: none;
 }
-#fleet-config-tab-button-wrapper{
-	width: 100%;
-	height: 60px;
-	align-self: flex-end;
+.play-pause-indicator-icon--paused{
+	background-image: url("./images/pause.png");
 }
-.ships-specs-ship-amount-val{
-	width: 40px;
-	text-align: center;
-	background: transparent;
-	color: white;
-	border: none;
-	border-bottom: solid 1px #213634;
-	margin: 0 5px;
+.play-pause-indicator-icon--play{
+	background-image: url("./images/play.png");
 }
-#fleet-specs-name, #fleet-specs-faction, #fleet-specs-team{
-	background: transparent;
-	color: white;
-	border: none;
-	border-bottom: solid 1px #213634;
-	margin: 10px 0;
-	font-size: inherit;
-}
-#fleet-specs-faction:focus, #fleet-specs-team:focus{
-	background: rgba(29, 41, 37, 1);
-}
-.fleet-config-fleet, #fleet-config-new-fleet-button{
-	min-width: 200px;
-	margin: 8px;
-	padding: 8px;
-	background-color: rgba(0, 0, 0, 0.3);
-}
-#fleet-config-new-fleet-button{
-	height: 40px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background-color: rgba(0, 0, 0, 0.3);
-	font-size: 20px;
-}
-#fleet-config-tab-fleets-container{
-	height: 40vh;
-	overflow-y: scroll;
-}
-option[default]{
-	display: none;
-}
-
 
 /* fleet combat tab */
 #fleet-combat-tab{
@@ -226,8 +123,10 @@ option[default]{
 	--translate-Y: 0;
 	transform: translateY(var(--translate-Y));
 	transition: transform .2s;
+
+	user-select: none;
 }
-#fleet-combat-tab-header-rest, #fleet-combat-tab-indicator, #fleet-combat-tab-fleets{
+#fleet-combat-tab-indicator, #fleet-combat-tab-fleets{
 	background: rgba(29, 41, 37, 0.8);
 }
 #fleet-combat-tab-indicator{
@@ -238,6 +137,7 @@ option[default]{
 }
 #fleet-combat-tab-indicator > div{
 	background-color: var(--color);
+	flex-grow: var(--rel-width);
 	height: 3px;
 	box-shadow: 0 0 10px 2px var(--color);
 	margin-top: 0px;
@@ -251,10 +151,7 @@ option[default]{
 	grid-template-columns: 300px auto;
 	width: 100%;
 	height: 40px;
-}
-#fleet-combat-tab-header-rest{
-	align-self: end;
-	height: 32px;
+	background: rgba(29, 41, 37, 0.8);
 }
 #fleet-combat-tab-fleets{
 	display: flex;
@@ -265,18 +162,15 @@ option[default]{
 #fleet-combat-tab-header-label p{
 	color: white;
 	font-size: 20px;
-	margin-left: 20px;
+	margin-left: 15px;
 	margin-top: 10px;
 }
 #fleet-combat-tab-header-label{
 	width: 300px;
-	height: 40px;
-	background: url("./images/fleet-combat-tab-header-label.svg");
-	opacity: 0.8;
 }
 #fleet-combat-tab-icon{
 	position: absolute;
-	top: 15px;
+	top: 10px;
 	right: 10px;
 	width: 25px;
 	height: 25px;
@@ -303,6 +197,7 @@ option[default]{
 .header-name-container h2{
 	margin-top: 5px;
 	margin-left: 10px;
+	user-select: none;
 }
 .header-button-container{
 	margin-top: 5px;
@@ -315,6 +210,7 @@ option[default]{
 }
 .event-tab-body > * {
 	margin: 15px;
+	max-width: 40em;
 }
 .event-tab-img{
 	width: 40vw;
@@ -327,6 +223,7 @@ option[default]{
 	border: 1px solid #489D8A;
 	width: 40vw;
 	padding: 7px;
+	user-select: none;
 }
 .event-tab-options-container{
 	display: flex;
@@ -341,6 +238,7 @@ option[default]{
 	background-color: #347063;
 	padding: 3px;
 	margin: 5px;
+	user-select: none;
 }
 .header-close-button{
 	width: 25px;
@@ -356,7 +254,8 @@ option[default]{
 }
 
 .fleet-container{
-	max-height: 40vh;
+	height: 40vh;
+	min-width: 240px;
 	overflow-y: scroll;
 	margin: 5px;
 	border: 2px solid #489D8A;
@@ -368,23 +267,48 @@ option[default]{
 	padding: 2px;
 	padding-left: 10px;
 }
+.ships-container{
+	display: flex;
+	flex-direction: column;
+}
 .ship-container{
 	display: grid;
-	grid-template-columns: 40px auto;
+	grid-template-columns: 20px auto;
 	grid-template-rows: 1fr 1fr;
 	min-width: 200px;
+	order: var(--order);
 
 	font-size: 17px;
 	color: white;
 	margin: 4px 0;
 	padding: 2px;
 	background-color: rgba(0, 0, 0, 0.3);
+
+	user-select: none;
 }
-.ship-health{
+.ship-status-container{
 	grid-row: 1/3;
 	grid-column: 1/2;
 	align-self: stretch;
-	background: url("./images/health_icon.png") center no-repeat;
+	display: flex;
+	flex-direction: row;
+	align-items: flex-end;
+	justify-content: center;
+}
+.ship-status{
+	height: var(--amount);
+	width: 25%;
+	margin-right: 7%;
+	border-radius: 1px;
+}
+.ship-status-shields{
+	background-color: aqua;
+}
+.ship-status-armour{
+	background-color: rgb(201, 96, 11);
+}
+.ship-status-hull{
+	background-color: rgb(0, 139, 104);
 }
 .ship-name{
 	grid-column: 2/3;
@@ -453,6 +377,33 @@ option[default]{
 	width: 100%;
 	height: 70%;
 }
+.dropzone-loading,
+.dropzone-success,
+.dropzone-fail{
+	width: 7rem;
+	height: 7rem;
+}
+.spinner .stator,
+.dropzone-success,
+.dropzone-fail
+{
+	fill: var(--menu-color-main);
+	stroke: none;
+}
+.spinner .rotor{
+	fill: none;
+	stroke: var(--menu-color-main);
+	transform-origin: center;
+	animation: spin 3s linear infinite;
+}
+.rotor.fast{
+	animation: spin 2s linear infinite;
+}
+.spinner .planet{
+	fill: var(--menu-color-main);
+	stroke: #fff;
+}
+
 .arrow-left, .arrow-right{
 	position: absolute;
 	transform-origin: center;
@@ -463,11 +414,12 @@ option[default]{
 	border-left: 8px solid var(--menu-color-main-semitransparent);
 	border-radius: 6px;
 	z-index: 100;
+	transition: 0.1s linear all;
+	cursor: pointer;
 }
 .arrow-left.ready:hover, .arrow-right.ready:hover{
 	border-top: 8px solid var(--menu-color-main);
 	border-left: 8px solid var(--menu-color-main);
-	cursor: pointer;
 }
 .arrow-right{
 	right: 15px;
@@ -510,36 +462,31 @@ option[default]{
 	left: 0;
 	background-color: var(--menu-color-main);
 	z-index: 100;
+	transition: 0.15s linear all;
 }
 .slide-button-option-left.chosen::after{
 	border-top-left-radius: 5px;
 	border-bottom-left-radius: 5px;
 	transform-origin: right;
-	animation: slideHorisontal 0.2s linear;
-	animation-fill-mode: forwards;
+	transform: scaleX(0);
 }
 .slide-button-option-right.chosen::after{
 	border-top-right-radius: 5px;
 	border-bottom-right-radius: 5px;
 	transform-origin: left;
-	animation: slideHorisontal 0.2s linear;
-	animation-fill-mode: forwards;
+	transform: scaleX(0);
 }
 .slide-button-option-left.unchosen::after{
 	border-top-left-radius: 5px;
 	border-bottom-left-radius: 5px;
 	transform-origin: right;
-	animation: slideHorisontal 0.2s linear;
-	animation-fill-mode: forwards;
-	animation-direction: reverse;
+	transform: scaleX(1);
 }
 .slide-button-option-right.unchosen::after{
 	border-top-right-radius: 5px;
 	border-bottom-right-radius: 5px;
 	transform-origin: left;
-	animation: slideHorisontal 0.2s linear;
-	animation-fill-mode: forwards;
-	animation-direction: reverse;
+	transform: scaleX(1);
 }
 #menu-screen-1 .menu-screen-content-container{
 	display: flex;
@@ -555,6 +502,7 @@ option[default]{
 	height: 60%;
 	margin-top: 5vh;
 	border: 6px dashed var(--menu-color-main-semitransparent);
+	transition: 0.1s linear all;
 
 	font-family: var(--font-family-main);
 	font-size: var(--txt-lg);
@@ -562,6 +510,14 @@ option[default]{
 	-moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+}
+.dropzone *{
+	text-align: center;
+	pointer-events: none;
+}
+.dropzone.over{
+	color: var(--menu-color-main);
+	border: 6px dashed var(--menu-color-main);
 }
 #menu-screen-2 .menu-screen-content-container,
 #menu-screen-3 .menu-screen-content-container
@@ -573,7 +529,7 @@ option[default]{
 }
 .tabs-container{
 	display: grid;
-	grid-template-columns: repeat(auto-fill, 120px);
+	grid-template-columns: repeat(auto-fill, 140px);
 	grid-gap: 10px 10px;
 	justify-content: center;
 	align-content: start;
@@ -582,25 +538,27 @@ option[default]{
 	height: 60%;
 }
 .tab{
+	box-sizing: border-box;
 	display: flex;
 	position: relative;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-	padding: 15px 30px;
+	padding: 15px 10px;
 	border-radius: 8px;
+	min-width: 140px;
 	cursor: pointer;
 	transition: background-color 0.1s;
 }
 .tab:hover{
 	background-color: rgba(0, 0, 0, 0.06);
 }
-.tab::after{
+#menu-screen-3 .tab::after{
 	content: "";
 	display: block;
 	width: 12px;
 	height: 12px;
-	background-color: green;
+	background-color: var(--fleet-color);
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -611,7 +569,11 @@ option[default]{
 	width: 50px;
 	height: 50px;
 	border-radius: 100%;
-	background-color: goldenrod;
+	background-color: var(--side-color);
+}
+.required .tab-icon{
+	background-color: transparent;
+	background-image: url("./images/add-icon.svg");
 }
 .tab-name{
 	margin-top: 10px;
@@ -703,8 +665,12 @@ option[default]{
 	min-height: 10px;
 	cursor: pointer;
 }
-.block-input.chosen{
-	box-shadow: 0px 0px 1px 1px var(--menu-color-main);
+#conflict-sides-dialog .block-input.chosen{
+	box-shadow: 0px 0px 1px 1px var(--color);
+	transform: translateY(-2px);
+}
+#conflict-sides-dialog .block-input{
+	background-color: var(--color);
 }
 .dialog-buttons-container{
 	display: flex;
@@ -727,7 +693,7 @@ option[default]{
 	cursor: pointer;
 }
 .dialog-button-ok,
-.block-input.chosen
+#fleets-dialog .block-input.chosen
 {
 	border: 1px solid var(--menu-color-main);
 	background-color: var(--menu-color-main);
@@ -735,7 +701,7 @@ option[default]{
 }
 .dialog-button-cancel,
 .dialog-button-delete,
-.block-input
+#fleets-dialog .block-input
 {
 	border: 1px solid var(--menu-color-main);
 	background-color: white;
@@ -744,6 +710,7 @@ option[default]{
 
 .dialog input[type="text"]{
 	background-color: rgb(240, 240, 240);
+	color: var(--text-color-main);
 	border: none;
 	border-bottom: 2px solid transparent;
 	border-radius: 5px;
@@ -753,12 +720,19 @@ option[default]{
 	outline: none;
 }
 
-
-@keyframes slideHorisontal{
+@keyframes spin{
 	from{
-		transform: scaleX(0)
+		transform: rotate(0deg);
 	}
 	to{
-		transform: scaleX(1);
+		transform: rotate(360deg);
+	}
+}
+@keyframes bg-slide{
+	from{
+		transform: translateX(0);
+	}
+	to{
+		transform: translateX(50%);
 	}
 }
